@@ -1,0 +1,40 @@
+# Python virtual environment & caches
+venv/
+.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend dependencies & build output
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.npm
+*.tsbuildinfo
+
+# OS & Editor generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Test & Temporary databases
+*test*.db
+*.sqlite-journal
+
+# Uploads directory contents (preserve directory)
+backend/uploads/*
+!backend/uploads/.gitkeep
