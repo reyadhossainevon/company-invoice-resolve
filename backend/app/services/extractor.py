@@ -381,8 +381,9 @@ class InformationExtractor:
             r"(?i)\b(INV-[0-9A-Za-z\-]+)\b",
             r"(?i)\b(REC-[0-9A-Za-z\-]+)\b",
             r"(?i)\b(MSA-[0-9A-Za-z\-]+)\b",
-            r"(?i)(?:Invoice|Receipt|Bill|Reference|Ref|Agreement)[ \t]*(?:Number|No|#|\.)?[ \t]*[:\-#][ \t]*([A-Za-z0-9\-_/#]+)",
-            r"(?i)(?:Invoice|Receipt|Bill)[ \t]+#?[ \t]*([A-Za-z0-9\-_/#]{3,})",
+            r"(?i)(?:Invoice|Receipt|Bill|Challan|Reference|Ref|Memo|Voucher)[ \t]*(?:Number|No|#|\.)?[ \t]*[:\-#]?[ \t]*([A-Za-z0-9\-_/#]+)",
+            r"(?i)(?:Invoice|Receipt|Bill|Challan)[ \t]+#?[ \t]*([A-Za-z0-9\-_/#]{3,})",
+            r"(?i)#\s*([0-9A-Za-z\-]{4,})",
         ]
         for pat in inv_patterns:
             m = re.search(pat, text)
@@ -410,8 +411,9 @@ class InformationExtractor:
         # 4. Supplier Name
         supplier_name = None
         sup_patterns = [
-            r"(?i)(?:Supplier|Vendor|From|Billed\s*By|Issued\s*By)[ \t]*[:\-][ \t]*([^\n\r]+)",
-            r"(?i)EXPENSE\s*RECEIPT\s*-\s*([^\n\r]+)",
+            r"(?i)(?:Supplier|Vendor|From|Billed\s*By|Issued\s*By|Seller|Merchant|Company)[ \t]*[:\-][ \t]*([^\n\r]+)",
+            r"(?i)EXPENSE\s*RECEIPT\s*[-–—:]\s*([^\n\r]+)",
+            r"(?i)(?:Tax\s*Invoice|Commercial\s*Invoice|Invoice|Challan)\s*[-–—:]\s*([^\n\r]+)",
             r"(?i)Supplier:\s*([^\n\r\(\)]+)",
         ]
         for pat in sup_patterns:
@@ -420,6 +422,15 @@ class InformationExtractor:
                 supplier_name = m.group(1).strip()
                 supplier_name = re.sub(r"\s*\(.*?\)$", "", supplier_name).strip()
                 break
+
+        # Fallback top-lines supplier discovery for OCR screenshots
+        if not supplier_name:
+            top_lines = [l.strip() for l in text.splitlines() if l.strip()]
+            for line in top_lines[:5]:
+                if re.search(r"(?i)\b(Ltd|Limited|PLC|Inc|Corp|Corporation|Industries|Enterprises?|Hospital|Pharmacy|Trading|Technologies|BD)\b", line):
+                    if not re.search(r"(?i)\b(invoice|receipt|bill|date|total|amount|due|subtotal)\b", line):
+                        supplier_name = line
+                        break
 
         # 5. Customer Name
         customer_name = None
@@ -436,20 +447,20 @@ class InformationExtractor:
 
         # 6. Financial Totals (Subtotal, Tax, Total)
         subtotal = None
-        subtotal_match = re.search(r"(?i)\bsubtotal\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9,]+(?:\.[0-9]{1,2})?)", text)
+        subtotal_match = re.search(r"(?i)\bsubtotal\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9.,]+(?:\.[0-9]{1,2})?)", text)
         if subtotal_match:
             subtotal = cls._to_float(subtotal_match.group(1))
 
         tax = None
-        tax_match = re.search(r"(?i)\b(?:tax|vat)\b(?:\s*\([^)]*\))?[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9,]+(?:\.[0-9]{1,2})?)", text)
+        tax_match = re.search(r"(?i)\b(?:tax|vat)\b(?:\s*\([^)]*\))?[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9.,]+(?:\.[0-9]{1,2})?)", text)
         if tax_match:
             tax = cls._to_float(tax_match.group(1))
 
         total = None
         total_patterns = [
-            r"(?i)\b(?:total\s*amount|total\s*paid|grand\s*total|amount\s*due)\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9,]+(?:\.[0-9]{1,2})?)",
-            r"(?i)(?<!sub)\btotal\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9,]+(?:\.[0-9]{1,2})?)",
-            r"(?i)engagement\s*fee\s*is\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9,]+(?:\.[0-9]{1,2})?)",
+            r"(?i)\b(?:total\s*amount|total\s*paid|grand\s*total|amount\s*due|total\s*due|total\s*payable)\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9.,]+(?:\.[0-9]{1,2})?)",
+            r"(?i)(?<!sub)\btotal\b[ \t]*[:\-]?\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9.,]+(?:\.[0-9]{1,2})?)",
+            r"(?i)engagement\s*fee\s*is\s*(?:BDT|Tk\.?|৳|[$€£¥])?\s*([0-9.,]+(?:\.[0-9]{1,2})?)",
         ]
         for pat in total_patterns:
             m = re.search(pat, text)
@@ -567,8 +578,31 @@ class InformationExtractor:
         if isinstance(val, (int, float)):
             return float(val)
         try:
-            cleaned = re.sub(r"[^\d.-]", "", str(val))
-            return float(cleaned)
+            s = str(val).strip()
+            # Clean symbols, preserve digits, dots, commas, minus
+            s = re.sub(r"[^\d.,-]", "", s)
+            if not s:
+                return None
+            # If both commas and dots exist: e.g. 40,000.00 vs 40.000,00
+            if "," in s and "." in s:
+                if s.rfind(".") > s.rfind(","):
+                    s = s.replace(",", "")
+                else:
+                    s = s.replace(".", "").replace(",", ".")
+            elif s.count(".") > 1:
+                # Multiple periods from OCR (e.g. 40.000.00)
+                parts = s.split(".")
+                s = "".join(parts[:-1]) + "." + parts[-1]
+            elif s.count(",") > 1:
+                # Multiple commas (e.g. 1,000,000)
+                s = s.replace(",", "")
+            elif "," in s and "." not in s:
+                parts = s.split(",")
+                if len(parts[-1]) == 2:
+                    s = parts[0] + "." + parts[1]
+                else:
+                    s = s.replace(",", "")
+            return float(s)
         except (ValueError, TypeError):
             return None
 

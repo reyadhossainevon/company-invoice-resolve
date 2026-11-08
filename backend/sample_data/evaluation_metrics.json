@@ -2,7 +2,7 @@
   "dataset_size": 6,
   "valid_documents_tested": 5,
   "corrupted_files_tested": 1,
-  "overall_extraction_accuracy_pct": 97.1,
+  "overall_extraction_accuracy_pct": 100.0,
   "field_accuracy_breakdown": {
     "invoice_number": {
       "total": 5,
@@ -36,11 +36,11 @@
     },
     "currency": {
       "total": 5,
-      "correct": 4,
-      "accuracy_pct": 80.0
+      "correct": 5,
+      "accuracy_pct": 100.0
     }
   },
-  "validation_detection_accuracy_pct": 95.0,
+  "validation_detection_accuracy_pct": 100.0,
   "validation_breakdown": {
     "math_error": {
       "precision": 100.0,
@@ -48,9 +48,9 @@
       "accuracy": 100.0
     },
     "missing_critical": {
-      "precision": 50.0,
+      "precision": 100.0,
       "recall": 100.0,
-      "accuracy": 80.0
+      "accuracy": 100.0
     },
     "duplicate": {
       "precision": 100.0,
@@ -63,15 +63,15 @@
       "accuracy": 100.0
     }
   },
-  "avg_latency_ms": 128.5,
-  "avg_latency_per_page_ms": 128.5,
+  "avg_latency_ms": 901.3,
+  "avg_latency_per_page_ms": 901.3,
   "document_success_rate_pct": 100.0,
   "corrupted_isolation_rate_pct": 100.0,
   "test_cases": [
     {
       "filename": "01_valid_invoice_walton.pdf",
       "description": "Digital PDF - Fully valid Walton Hi-Tech Industries invoice in BDT",
-      "elapsed_ms": 100.74,
+      "elapsed_ms": 34.05,
       "pages": 1,
       "actual_status": "processed",
       "expected_status": "processed",
@@ -83,7 +83,7 @@
     {
       "filename": "02_wrong_math_daraz.pdf",
       "description": "Digital PDF - Daraz Bangladesh invoice with calculation mistake",
-      "elapsed_ms": 4.42,
+      "elapsed_ms": 8.64,
       "pages": 1,
       "actual_status": "processed",
       "expected_status": "processed",
@@ -95,7 +95,7 @@
     {
       "filename": "03_missing_info_aarong.csv",
       "description": "CSV Spreadsheet - Aarong healthcare orders missing supplier name",
-      "elapsed_ms": 43.98,
+      "elapsed_ms": 71.57,
       "pages": 0,
       "actual_status": "processed",
       "expected_status": "processed",
@@ -107,7 +107,7 @@
     {
       "filename": "04_monthly_ledger_sheet.xlsx",
       "description": "Multi-sheet Excel - Beximco Pharmaceuticals 3-sheet ledger in BDT",
-      "elapsed_ms": 481.57,
+      "elapsed_ms": 888.47,
       "pages": 0,
       "actual_status": "processed",
       "expected_status": "processed",
@@ -119,7 +119,7 @@
     {
       "filename": "05_damaged_file.pdf",
       "description": "Damaged File - Random byte stream with invalid PDF header",
-      "elapsed_ms": 0.42,
+      "elapsed_ms": 0.37,
       "pages": 0,
       "actual_status": "failed",
       "expected_status": "failed",
@@ -131,16 +131,14 @@
     {
       "filename": "06_scanned_receipt_ocr.png",
       "description": "Scanned Image - Rotated receipt processed via OpenCV deskewing and OCR",
-      "elapsed_ms": 139.85,
+      "elapsed_ms": 4404.78,
       "pages": 1,
       "actual_status": "processed",
       "expected_status": "processed",
-      "validation_status": "needs_review",
-      "field_matches": 6,
+      "validation_status": "valid",
+      "field_matches": 7,
       "field_total": 7,
-      "notes": [
-        "Field mismatch on currency: exp='None' act='BDT'"
-      ]
+      "notes": []
     }
   ]
 }

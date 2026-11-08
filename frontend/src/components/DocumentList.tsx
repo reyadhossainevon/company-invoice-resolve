@@ -9,6 +9,7 @@ import {
   Search,
   Sparkles,
   X,
+  Trash2,
 } from 'lucide-react';
 import type { DocumentResponse } from '../types/document';
 import { formatBDT } from '../utils/formatters';
@@ -22,6 +23,8 @@ interface DocumentListProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   isSearching?: boolean;
+  onDeleteDoc?: (fileId: string) => void;
+  onClearAll?: () => void;
 }
 
 export const DocumentList: React.FC<DocumentListProps> = ({
@@ -33,6 +36,8 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   searchQuery,
   onSearchChange,
   isSearching = false,
+  onDeleteDoc,
+  onClearAll,
 }) => {
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -194,9 +199,26 @@ export const DocumentList: React.FC<DocumentListProps> = ({
             </button>
           </div>
 
-          <span className="text-[11px] font-medium text-slate-400">
-            {isSearching ? 'Searching...' : `${filtered.length} shown`}
-          </span>
+          <div className="flex items-center space-x-2">
+            {onClearAll && documents.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to delete ALL documents?')) {
+                    onClearAll();
+                  }
+                }}
+                className="text-[11px] font-semibold text-red-500 hover:text-red-700 hover:underline inline-flex items-center space-x-1 cursor-pointer"
+                title="Clear all documents"
+              >
+                <Trash2 className="h-3 w-3" />
+                <span>Clear All</span>
+              </button>
+            )}
+            <span className="text-[11px] font-medium text-slate-400">
+              {isSearching ? 'Searching...' : `${filtered.length} shown`}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -281,11 +303,28 @@ export const DocumentList: React.FC<DocumentListProps> = ({
                   </div>
                 </div>
 
-                <ChevronRight
-                  className={`h-4 w-4 shrink-0 transition-transform ${
-                    isSelected ? 'text-indigo-600 translate-x-0.5' : 'text-slate-300'
-                  }`}
-                />
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  {onDeleteDoc && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete "${doc.filename}"?`)) {
+                          onDeleteDoc(doc.file_id);
+                        }
+                      }}
+                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      title={`Delete ${doc.filename}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <ChevronRight
+                    className={`h-4 w-4 transition-transform ${
+                      isSelected ? 'text-indigo-600 translate-x-0.5' : 'text-slate-300'
+                    }`}
+                  />
+                </div>
               </div>
             );
           })

@@ -6,7 +6,13 @@ import { DocumentList } from './components/DocumentList';
 import { DocumentDetailPanel } from './components/DocumentDetailPanel';
 import { SystemMetricsModal } from './components/SystemMetricsModal';
 import { CompareModal } from './components/CompareModal';
-import { fetchDocuments, runSampleDocuments, uploadDocuments } from './services/api';
+import {
+  clearAllDocuments,
+  deleteDocument,
+  fetchDocuments,
+  runSampleDocuments,
+  uploadDocuments,
+} from './services/api';
 import type { DocumentResponse } from './types/document';
 
 export const App: React.FC = () => {
@@ -132,17 +138,50 @@ export const App: React.FC = () => {
     );
   };
 
+  // Handle deleting individual document
+  const handleDeleteDocument = async (fileId: string) => {
+    try {
+      await deleteDocument(fileId);
+      const remainingDocs = documents.filter((d) => d.file_id !== fileId);
+      const remainingAllDocs = allDocs.filter((d) => d.file_id !== fileId);
+      setDocuments(remainingDocs);
+      setAllDocs(remainingAllDocs);
+
+      if (selectedDocId === fileId) {
+        setSelectedDocId(remainingDocs.length > 0 ? remainingDocs[0].file_id : null);
+      }
+    } catch (err) {
+      console.error('Delete document failed:', err);
+      alert(`Failed to delete document: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Handle clearing all documents
+  const handleClearAllDocuments = async () => {
+    try {
+      await clearAllDocuments();
+      setDocuments([]);
+      setAllDocs([]);
+      setSelectedDocId(null);
+      setSearchQuery('');
+    } catch (err) {
+      console.error('Clear all documents failed:', err);
+      alert(`Failed to clear documents: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Currently selected document
   const selectedDoc = documents.find((d) => d.file_id === selectedDocId) || null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
-      {/* 1. Clean Top Navbar (Only 3 Simple Buttons on Top Right) */}
+      {/* 1. Clean Top Navbar */}
       <Navbar
         onOpenMetrics={() => setIsMetricsModalOpen(true)}
         onOpenCompare={() => setIsCompareModalOpen(true)}
         onLoadSamples={handleLoadSamples}
         isLoadingSamples={isLoadingSamples}
+        onClearAll={handleClearAllDocuments}
       />
 
       {/* Task 7: Accuracy Report Modal */}
@@ -183,6 +222,8 @@ export const App: React.FC = () => {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               isSearching={isSearching}
+              onDeleteDoc={handleDeleteDocument}
+              onClearAll={handleClearAllDocuments}
             />
           </div>
 
@@ -191,6 +232,7 @@ export const App: React.FC = () => {
             <DocumentDetailPanel
               document={selectedDoc}
               onDocumentUpdated={handleDocumentUpdated}
+              onDeleteDocument={handleDeleteDocument}
             />
           </div>
         </div>

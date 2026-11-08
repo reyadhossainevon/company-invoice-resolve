@@ -42,6 +42,15 @@ export async function clearAllDocuments(): Promise<void> {
   }
 }
 
+export async function deleteDocument(fileId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/${fileId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    throw new Error('Failed to delete document');
+  }
+}
+
 export async function getDocument(fileId: string): Promise<DocumentResponse> {
   const res = await fetch(`${API_BASE}/${fileId}`);
   if (!res.ok) {

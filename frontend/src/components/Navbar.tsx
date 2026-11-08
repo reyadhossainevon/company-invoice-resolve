@@ -1,11 +1,12 @@
 import React from 'react';
-import { FileText, RefreshCw, BarChart3, ArrowRightLeft } from 'lucide-react';
+import { FileText, RefreshCw, BarChart3, ArrowRightLeft, Trash2 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenMetrics: () => void;
   onOpenCompare: () => void;
   onLoadSamples: () => void;
   isLoadingSamples: boolean;
+  onClearAll?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -13,6 +14,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCompare,
   onLoadSamples,
   isLoadingSamples,
+  onClearAll,
 }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
@@ -30,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* 3 Simple Top Buttons */}
+        {/* Top Action Buttons */}
         <div className="flex items-center space-x-2.5">
           {/* Button 1: Accuracy Report */}
           <button
@@ -50,7 +52,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>🔍 Compare PDF & Excel</span>
           </button>
 
-          {/* Button 3: Load Demo Invoices (BDT) */}
+          {/* Button 3: Clear All */}
+          {onClearAll && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear all documents from the database?')) {
+                  onClearAll();
+                }
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-red-200 hover:border-red-300 bg-red-50/60 hover:bg-red-100 text-red-600 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              title="Delete all documents from database"
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+              <span>🗑️ Clear All</span>
+            </button>
+          )}
+
+          {/* Button 4: Load Demo Invoices (BDT) */}
           <button
             onClick={onLoadSamples}
             disabled={isLoadingSamples}

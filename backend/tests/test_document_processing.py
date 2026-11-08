@@ -80,6 +80,8 @@ def test_image_preprocessing_pipeline():
     assert page["image_preprocessing"] is not None
     assert page["image_preprocessing"].get("grayscale_applied") is True
     assert page["image_preprocessing"].get("adaptive_threshold_applied") is True
+    # Verify pure ONNX OCR extracted real invoice text without external Windows .exe
+    assert "BEXIMCO" in summary or "REC-2026-9041" in summary or "46,000" in summary
 
 
 def test_pipeline_corrupted_file_isolation():

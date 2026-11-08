@@ -469,3 +469,28 @@ class DocumentService:
             action_note="Document reprocessed from raw file bytes.",
         )
         return cls.record_to_response(updated_rec)
+
+    @classmethod
+    def delete_document(cls, db: Session, doc_id: str) -> bool:
+        """
+        Deletes a single document record and cascades removal of its extracted invoice,
+        validation results, and processing audit history. Also removes the uploaded
+        raw file on disk if stored in the uploads directory.
+        """
+        rec = db.query(DocumentRecord).filter(DocumentRecord.id == doc_id).first()
+        if not rec:
+            return False
+
+        # Attempt to delete file from uploads directory if applicable
+        if rec.raw_file_path:
+            try:
+                p = Path(rec.raw_file_path).resolve()
+                upload_dir_resolved = UPLOAD_DIR.resolve()
+                if str(p).startswith(str(upload_dir_resolved)) and p.exists():
+                    p.unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning("Could not delete stored file on disk for '%s': %s", doc_id, e)
+
+        db.delete(rec)
+        db.commit()
+        return True

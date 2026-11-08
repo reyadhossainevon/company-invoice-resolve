@@ -240,6 +240,15 @@ def get_document_by_id(file_id: str, db: Session = Depends(get_db)):
     return doc
 
 
+@app.delete("/api/documents/{file_id}")
+def delete_document_by_id(file_id: str, db: Session = Depends(get_db)):
+    """Deletes a single document, its extraction data, validation results, and audit history."""
+    deleted = DocumentService.delete_document(db, file_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"status": "success", "message": f"Document '{file_id}' deleted successfully."}
+
+
 @app.put("/api/documents/{file_id}/correct", response_model=DocumentResponse)
 def correct_document(
     file_id: str,

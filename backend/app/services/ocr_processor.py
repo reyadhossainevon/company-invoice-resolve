@@ -19,7 +19,23 @@ class OCRProcessor:
     """
     Handles image preprocessing (grayscale, denoising, deskewing, adaptive thresholding)
     and text extraction via OCR with confidence calculation.
+    Supports Tesseract OCR with automatic fallback to RapidOCR (pure ONNX, zero external .exe dependencies).
     """
+
+    _rapidocr_engine: Any = None
+
+    @classmethod
+    def get_rapidocr_engine(cls) -> Any:
+        """Lazy load RapidOCR engine singleton."""
+        if cls._rapidocr_engine is None:
+            try:
+                from rapidocr_onnxruntime import RapidOCR
+                cls._rapidocr_engine = RapidOCR()
+                logger.info("RapidOCR ONNX engine initialized successfully.")
+            except Exception as e:
+                logger.warning("RapidOCR could not be loaded: %s", e)
+                cls._rapidocr_engine = False
+        return cls._rapidocr_engine if cls._rapidocr_engine is not False else None
 
     @classmethod
     def is_tesseract_available(cls) -> bool:
@@ -114,6 +130,8 @@ class OCRProcessor:
         """
         Takes a NumPy OpenCV image, optionally applies preprocessing,
         and runs OCR with confidence calculation.
+        Tries Tesseract OCR first, and gracefully falls back to RapidOCR (pure ONNX)
+        when Tesseract is not installed or available on Windows.
         Returns: (extracted_text, ocr_confidence_score, preprocessing_metadata)
         """
         if apply_preprocessing:
@@ -122,57 +140,88 @@ class OCRProcessor:
             processed_img = image_np
             meta = {"preprocessing": "none"}
 
-        # Check if tesseract is available
-        if not cls.is_tesseract_available():
-            msg = (
-                f"[OCR Diagnostic: Image preprocessed successfully (Resolution: {image_np.shape[1]}x{image_np.shape[0]}, "
-                f"Deskew Angle: {meta.get('deskew_angle', 0.0)}°). "
-                "Tesseract OCR executable not detected in environment PATH. "
-                "Image preprocessing completed.]"
-            )
-            return msg, None, meta
+        # 1. Try Tesseract OCR if binary is available
+        if cls.is_tesseract_available():
+            try:
+                data = pytesseract.image_to_data(processed_img, output_type=pytesseract.Output.DICT)
+                words: List[str] = []
+                confidences: List[int] = []
 
-        try:
-            # Extract OCR text and word-level confidence data
-            data = pytesseract.image_to_data(processed_img, output_type=pytesseract.Output.DICT)
-            words: List[str] = []
-            confidences: List[int] = []
+                for i in range(len(data["text"])):
+                    word = data["text"][i].strip()
+                    conf_val = data["conf"][i]
 
-            for i in range(len(data["text"])):
-                word = data["text"][i].strip()
-                conf_val = data["conf"][i]
+                    try:
+                        conf_int = int(float(conf_val))
+                    except (ValueError, TypeError):
+                        conf_int = -1
 
-                try:
-                    conf_int = int(float(conf_val))
-                except (ValueError, TypeError):
-                    conf_int = -1
+                    if word:
+                        words.append(word)
+                        if conf_int >= 0:
+                            confidences.append(conf_int)
 
-                if word:
-                    words.append(word)
-                    if conf_int >= 0:
-                        confidences.append(conf_int)
+                extracted_text = " ".join(words)
+                if not extracted_text:
+                    extracted_text = pytesseract.image_to_string(processed_img).strip()
 
-            extracted_text = " ".join(words)
-            # If word reconstruction is sparse, fallback to image_to_string
-            if not extracted_text:
-                extracted_text = pytesseract.image_to_string(processed_img).strip()
+                if extracted_text and len(extracted_text.strip()) > 5:
+                    avg_conf = (
+                        round(float(np.mean(confidences)), 2)
+                        if confidences
+                        else (75.0 if extracted_text else 0.0)
+                    )
+                    meta["ocr_engine"] = "tesseract"
+                    return extracted_text, avg_conf, meta
+            except Exception as e:
+                logger.warning("Tesseract attempt failed, trying RapidOCR fallback: %s", e)
 
-            avg_conf = (
-                round(float(np.mean(confidences)), 2)
-                if confidences
-                else (75.0 if extracted_text else 0.0)
-            )
+        # 2. RapidOCR ONNX fallback (Pure Python/C++ ONNX runtime, zero Windows .exe dependency)
+        rapid_engine = cls.get_rapidocr_engine()
+        if rapid_engine is not None:
+            try:
+                # RapidOCR operates directly on the BGR image
+                res, elapse = rapid_engine(image_np)
+                # If nothing detected on raw, test against adaptive threshold image
+                if not res and processed_img is not None and processed_img is not image_np:
+                    res, elapse = rapid_engine(processed_img)
 
-            return extracted_text, avg_conf, meta
+                if res:
+                    lines: List[str] = []
+                    scores: List[float] = []
+                    for item in res:
+                        # item format: [box_coordinates, text_str, confidence_float]
+                        if len(item) >= 3:
+                            t = str(item[1]).strip()
+                            s = float(item[2])
+                            if t:
+                                lines.append(t)
+                                scores.append(s * 100.0)
+                        elif len(item) == 2:
+                            t = str(item[1]).strip()
+                            if t:
+                                lines.append(t)
+                                scores.append(85.0)
 
-        except pytesseract.TesseractNotFoundError:
-            msg = (
-                f"[Tesseract OCR binary not found. Image preprocessed ({image_np.shape[1]}x{image_np.shape[0]}).]"
-            )
-            return msg, None, meta
-        except Exception as e:
-            logger.error("OCR execution error: %s", e)
-            return f"[OCR Error: {str(e)}]", 0.0, meta
+                    extracted_text = "\n".join(lines)
+                    avg_conf = (
+                        round(float(np.mean(scores)), 2)
+                        if scores
+                        else (85.0 if extracted_text else 0.0)
+                    )
+                    meta["ocr_engine"] = "rapidocr_onnxruntime"
+                    meta["detected_lines"] = len(lines)
+                    return extracted_text, avg_conf, meta
+            except Exception as e:
+                logger.error("RapidOCR extraction failed: %s", e)
+
+        # 3. Fallback when neither engine detected text
+        msg = (
+            f"[OCR: Image processed ({image_np.shape[1]}x{image_np.shape[0]}, "
+            f"Deskew Angle: {meta.get('deskew_angle', 0.0)}°). "
+            "No readable text detected by OCR engine.]"
+        )
+        return msg, 0.0, meta
 
     @classmethod
     def process_image_file(

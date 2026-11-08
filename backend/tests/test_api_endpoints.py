@@ -1,7 +1,10 @@
 import io
 import pytest
 from fastapi import UploadFile
+from app.config import BASE_DIR
 from app.db.database import SessionLocal
+
+SAMPLE_DIR = BASE_DIR / "sample_data" / "files"
 from app.main import (
     correct_document,
     get_document_by_id,
@@ -118,3 +121,32 @@ def test_api_evaluation_metrics():
     assert "avg_latency_ms" in metrics
     assert "test_cases" in metrics
     assert metrics["overall_extraction_accuracy_pct"] >= 90.0
+
+
+def test_api_delete_individual_and_clear_all(db_session):
+    from fastapi import HTTPException
+    from app.main import delete_document_by_id, clear_all_documents
+    from app.services.pipeline import DocumentPipeline
+    from app.services.document_service import DocumentService
+
+    # Upload sample to guarantee at least 1 document in test db
+    pdf_path = SAMPLE_DIR / "01_valid_invoice_walton.pdf"
+    content = pdf_path.read_bytes()
+    doc_resp = DocumentPipeline.process_single_file(filename=pdf_path.name, content=content)
+    DocumentService.save_document_response(db_session, doc_resp, raw_content=content)
+
+    doc_id = doc_resp.file_id
+    # Test single delete
+    del_res = delete_document_by_id(file_id=doc_id, db=db_session)
+    assert del_res["status"] == "success"
+
+    # Verify document is gone
+    with pytest.raises(HTTPException) as exc:
+        get_document_by_id(file_id=doc_id, db=db_session)
+    assert exc.value.status_code == 404
+
+    # Test clear all
+    clear_res = clear_all_documents(db=db_session)
+    assert clear_res["status"] == "success"
+    all_docs = DocumentService.list_documents(db_session)
+    assert len(all_docs) == 0

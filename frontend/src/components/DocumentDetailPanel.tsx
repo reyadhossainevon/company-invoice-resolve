@@ -29,11 +29,13 @@ import { formatBDT, formatFileSize } from '../utils/formatters';
 interface DocumentDetailPanelProps {
   document: DocumentResponse | null;
   onDocumentUpdated?: (updated: DocumentResponse) => void;
+  onDeleteDocument?: (fileId: string) => void;
 }
 
 export const DocumentDetailPanel: React.FC<DocumentDetailPanelProps> = ({
   document,
   onDocumentUpdated,
+  onDeleteDocument,
 }) => {
   const [viewMode, setViewMode] = useState<'invoice' | 'raw' | 'history'>('invoice');
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
@@ -43,6 +45,7 @@ export const DocumentDetailPanel: React.FC<DocumentDetailPanelProps> = ({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isReprocessing, setIsReprocessing] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
   // Edit form state
@@ -212,6 +215,21 @@ export const DocumentDetailPanel: React.FC<DocumentDetailPanelProps> = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!document) return;
+    if (!window.confirm(`Are you sure you want to delete "${document.filename}"?`)) return;
+    setIsDeleting(true);
+    try {
+      if (onDeleteDocument) {
+        await onDeleteDocument(document.file_id);
+      }
+    } catch (err) {
+      alert(`Failed to delete document: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Find failed rules for plain English warning alert
   const failedRules = validation_result?.rule_results.filter((r) => r.status === 'failed') || [];
 
@@ -268,6 +286,16 @@ export const DocumentDetailPanel: React.FC<DocumentDetailPanelProps> = ({
           >
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
             <span>{copied ? 'Copied' : '📋 Copy JSON'}</span>
+          </button>
+
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+            title="Delete this document immediately"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+            <span>{isDeleting ? 'Deleting...' : '🗑️ Delete'}</span>
           </button>
         </div>
       </div>
