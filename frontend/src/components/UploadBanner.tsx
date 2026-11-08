@@ -6,7 +6,7 @@ interface UploadBannerProps {
   isUploading: boolean;
 }
 
-const SUPPORTED_EXTS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.xlsx', '.xls', '.csv'];
+const SUPPORTED_EXTS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.xlsx', '.xls', '.csv'];
 const MAX_SIZE_MB = 50;
 
 export const UploadBanner: React.FC<UploadBannerProps> = ({ onFilesSelected, isUploading }) => {
@@ -71,17 +71,17 @@ export const UploadBanner: React.FC<UploadBannerProps> = ({ onFilesSelected, isU
   };
 
   return (
-    <div className="mb-5">
+    <div className="mb-6">
       {/* Upload Box */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !isUploading && fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-4 sm:p-5 transition-all cursor-pointer select-none bg-white shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 ${
+        className={`border-2 border-dashed rounded-2xl p-5 sm:p-6 transition-all cursor-pointer select-none bg-white shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 ${
           isDragOver
             ? 'border-indigo-500 bg-indigo-50/50 scale-[1.005]'
-            : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50/80'
+            : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50/90'
         } ${isUploading ? 'opacity-60 pointer-events-none' : ''}`}
       >
         <input
@@ -95,24 +95,24 @@ export const UploadBanner: React.FC<UploadBannerProps> = ({ onFilesSelected, isU
         />
 
         {/* Left: Icon & Text */}
-        <div className="flex items-center space-x-3.5">
-          <div className="h-10 w-10 shrink-0 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+        <div className="flex items-center space-x-4">
+          <div className="h-12 w-12 shrink-0 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200">
             {isUploading ? (
-              <div className="h-5 w-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <UploadCloud className="h-5 w-5" />
+              <UploadCloud className="h-6 w-6" />
             )}
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-semibold text-slate-900">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-base font-bold text-slate-900">
                 {isUploading ? 'Processing uploaded documents...' : 'Upload invoices or documents'}
               </span>
-              <span className="hidden md:inline-block text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+              <span className="hidden md:inline-block text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
                 PDF • Excel • CSV • Images
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm font-medium text-slate-500 mt-0.5">
               Drag and drop files here, or click to choose from your device (up to 50MB)
             </p>
           </div>
@@ -122,45 +122,45 @@ export const UploadBanner: React.FC<UploadBannerProps> = ({ onFilesSelected, isU
         <button
           type="button"
           disabled={isUploading}
-          className="shrink-0 inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          className="shrink-0 inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold shadow-xs transition-colors cursor-pointer"
         >
-          <FileUp className="h-4 w-4" />
+          <FileUp className="h-4.5 w-4.5" />
           <span>Select Files</span>
         </button>
       </div>
 
       {validationError && (
-        <div className="mt-2.5 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-center space-x-2 text-xs text-rose-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="mt-3 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center space-x-2.5 text-sm font-semibold text-rose-800">
+          <AlertCircle className="h-5 w-5 shrink-0 text-rose-600" />
           <span>{validationError}</span>
         </div>
       )}
 
       {/* How to Use (3 Easy Steps) Strip */}
-      <div className="mt-3 py-2.5 px-4 bg-white border border-slate-200/90 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-xs text-xs">
-        <div className="flex items-center space-x-2 text-slate-700">
-          <span className="h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[11px]">
+      <div className="mt-3 py-3 px-5 bg-white border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs text-sm">
+        <div className="flex items-center space-x-2.5 text-slate-800">
+          <span className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">
             1
           </span>
-          <span className="font-medium">Upload PDF / Excel / Image</span>
+          <span className="font-semibold">Upload PDF / Excel / Image</span>
         </div>
 
-        <ArrowRight className="hidden sm:inline h-3.5 w-3.5 text-slate-400" />
+        <ArrowRight className="hidden sm:inline h-4 w-4 text-slate-400" />
 
-        <div className="flex items-center space-x-2 text-slate-700">
-          <span className="h-5 w-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-[11px]">
+        <div className="flex items-center space-x-2.5 text-slate-800">
+          <span className="h-6 w-6 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">
             2
           </span>
-          <span className="font-medium">AI checks BDT (৳) amounts & finds mistakes</span>
+          <span className="font-semibold">AI checks BDT (৳) amounts & finds mistakes</span>
         </div>
 
-        <ArrowRight className="hidden sm:inline h-3.5 w-3.5 text-slate-400" />
+        <ArrowRight className="hidden sm:inline h-4 w-4 text-slate-400" />
 
-        <div className="flex items-center space-x-2 text-slate-700">
-          <span className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[11px]">
+        <div className="flex items-center space-x-2.5 text-slate-800">
+          <span className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs">
             3
           </span>
-          <span className="font-medium">Click "Fix Now" to correct any wrong invoice</span>
+          <span className="font-semibold">Click "Fix Now" to correct any wrong invoice</span>
         </div>
       </div>
     </div>
