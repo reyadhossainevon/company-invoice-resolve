@@ -1,18 +1,34 @@
 import io
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-import cv2
-import numpy as np
-from PIL import Image, ImageSequence
-import pytesseract
-from app.config import TESSERACT_CMD
-from app.core.exceptions import CorruptedFileException
 
 logger = logging.getLogger(__name__)
 
+# Safe imports for headless / container environments
+try:
+    import cv2
+except (ImportError, Exception) as _cv2_err:
+    cv2 = None
+    logger.warning("cv2 (OpenCV) could not be imported: %s", _cv2_err)
+
+import numpy as np
+from PIL import Image, ImageSequence
+
+try:
+    import pytesseract
+except (ImportError, Exception) as _tess_err:
+    pytesseract = None
+    logger.warning("pytesseract could not be imported: %s", _tess_err)
+
+from app.config import TESSERACT_CMD
+from app.core.exceptions import CorruptedFileException
+
 # Configure pytesseract binary if detected
-if TESSERACT_CMD:
-    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+if pytesseract is not None and TESSERACT_CMD:
+    try:
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+    except Exception:
+        pass
 
 
 class OCRProcessor:
@@ -40,6 +56,8 @@ class OCRProcessor:
     @classmethod
     def is_tesseract_available(cls) -> bool:
         """Check if Tesseract binary is callable."""
+        if pytesseract is None:
+            return False
         try:
             _ = pytesseract.get_tesseract_version()
             return True
@@ -65,6 +83,11 @@ class OCRProcessor:
             "deskew_angle": 0.0,
             "adaptive_threshold_applied": True,
         }
+
+        # Fallback if cv2 is unavailable
+        if cv2 is None:
+            meta["preprocessing"] = "skipped_opencv_missing"
+            return image_np, meta
 
         # 1. Grayscale
         if len(image_np.shape) == 3 and image_np.shape[2] >= 3:
@@ -245,7 +268,10 @@ class OCRProcessor:
             # Convert PIL image to OpenCV format (RGB -> BGR)
             frame_rgb = frame.convert("RGB")
             frame_np = np.array(frame_rgb)
-            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
+            if cv2 is not None:
+                frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
+            else:
+                frame_bgr = frame_np
 
             text, conf, meta = cls.extract_from_image_np(frame_bgr, apply_preprocessing=True)
             pages.append(

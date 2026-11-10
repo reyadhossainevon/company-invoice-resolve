@@ -1,16 +1,31 @@
 import logging
 from typing import Any, Dict, List, Tuple
-import cv2
 import numpy as np
-import pymupdf  # PyMuPDF
+
+logger = logging.getLogger(__name__)
+
+# Safe imports for headless / container environments
+try:
+    import pymupdf  # PyMuPDF
+except (ImportError, Exception):
+    try:
+        import fitz as pymupdf
+    except (ImportError, Exception):
+        pymupdf = None
+        logger.warning("pymupdf/fitz could not be imported.")
+
+try:
+    import cv2
+except (ImportError, Exception):
+    cv2 = None
+    logger.warning("cv2 could not be imported in pdf_processor.")
+
 from app.core.exceptions import (
     CorruptedFileException,
     DocumentProcessingException,
     PasswordProtectedException,
 )
 from app.services.ocr_processor import OCRProcessor
-
-logger = logging.getLogger(__name__)
 
 
 class PDFProcessor:
@@ -31,6 +46,12 @@ class PDFProcessor:
         Returns:
             (pages_list, concatenated_text, metadata_dict, overall_extraction_method)
         """
+        if pymupdf is None:
+            raise CorruptedFileException(
+                f"PyMuPDF library is not available to process '{filename}'.",
+                error_code="PDF_PARSER_UNAVAILABLE"
+            )
+
         try:
             doc = pymupdf.open(stream=file_bytes, filetype="pdf")
         except pymupdf.FileDataError as e:
@@ -83,12 +104,15 @@ class PDFProcessor:
                         
                         # Convert PyMuPDF pixmap to OpenCV image format
                         img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
-                        if pix.n == 4:
-                            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGBA2BGR)
-                        elif pix.n == 3:
-                            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                        if cv2 is not None:
+                            if pix.n == 4:
+                                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGBA2BGR)
+                            elif pix.n == 3:
+                                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                            else:
+                                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_GRAY2BGR)
                         else:
-                            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_GRAY2BGR)
+                            img_bgr = img_np
 
                         # Free pixmap memory immediately to prevent memory leak
                         del pix

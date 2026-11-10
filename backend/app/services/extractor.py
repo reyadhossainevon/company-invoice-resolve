@@ -4,7 +4,14 @@ import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-import httpx
+
+logger = logging.getLogger(__name__)
+
+try:
+    import httpx
+except (ImportError, Exception) as _httpx_err:
+    httpx = None
+    logger.warning("httpx could not be imported: %s", _httpx_err)
 
 from app.prompts import (
     INVOICE_EXTRACTION_SYSTEM_PROMPT,
@@ -12,8 +19,6 @@ from app.prompts import (
 )
 from app.schemas.document import ExtractedContent
 from app.schemas.extraction import InvoiceExtractionData, LineItem
-
-logger = logging.getLogger(__name__)
 
 
 class InformationExtractor:
@@ -63,6 +68,9 @@ class InformationExtractor:
     def _extract_with_gemini(
         cls, filename: str, content_type: str, extracted_content: ExtractedContent, api_key: str
     ) -> Optional[InvoiceExtractionData]:
+        if httpx is None:
+            logger.warning("httpx library is not installed; skipping Gemini API call.")
+            return None
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         text_payload = cls._prepare_text_payload(extracted_content)
         user_prompt = INVOICE_EXTRACTION_USER_PROMPT_TEMPLATE.format(
@@ -97,6 +105,9 @@ class InformationExtractor:
     def _extract_with_openai(
         cls, filename: str, content_type: str, extracted_content: ExtractedContent, api_key: str
     ) -> Optional[InvoiceExtractionData]:
+        if httpx is None:
+            logger.warning("httpx library is not installed; skipping OpenAI API call.")
+            return None
         url = "https://api.openai.com/v1/chat/completions"
         text_payload = cls._prepare_text_payload(extracted_content)
         user_prompt = INVOICE_EXTRACTION_USER_PROMPT_TEMPLATE.format(
