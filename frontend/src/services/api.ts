@@ -5,7 +5,18 @@ import type {
   SystemHealth,
 } from '../types/document';
 
-const API_BASE = '/api/documents';
+const DEFAULT_BACKEND_URL = 'https://company-invoice-resolve.onrender.com';
+
+// API base URL configuration:
+// - Uses import.meta.env.VITE_API_URL if configured.
+// - In dev mode, defaults to empty string to leverage Vite's local proxy (/api -> 127.0.0.1:8000).
+// - In production (e.g. Vercel deployment), defaults to the live Render backend URL.
+const API_SERVER_URL = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? '' : DEFAULT_BACKEND_URL)
+).replace(/\/+$/, '');
+
+const API_BASE = `${API_SERVER_URL}/api/documents`;
 
 export async function checkSystemHealth(): Promise<SystemHealth> {
   const res = await fetch(`${API_BASE}/health`);
@@ -146,7 +157,7 @@ export async function fetchStatsSummary(): Promise<{
 }
 
 export async function fetchEvaluationMetrics(): Promise<any> {
-  const res = await fetch('/api/evaluation/metrics');
+  const res = await fetch(`${API_SERVER_URL}/api/evaluation/metrics`);
   if (!res.ok) {
     throw new Error('Failed to fetch evaluation metrics');
   }

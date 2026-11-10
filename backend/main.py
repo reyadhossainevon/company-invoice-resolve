@@ -16,6 +16,19 @@ if str(BACKEND_DIR) not in sys.path:
 # Expose the FastAPI application instance
 from app.main import app
 
+# Ensure CORS explicitly permits all origins so frontend (e.g. Vercel) can communicate seamlessly
+from fastapi.middleware.cors import CORSMiddleware
+
+cors_configured = any(getattr(m, "cls", None) == CORSMiddleware for m in getattr(app, "user_middleware", []))
+if not cors_configured:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 if __name__ == "__main__":
     import uvicorn
 
