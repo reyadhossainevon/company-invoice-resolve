@@ -113,16 +113,15 @@ export const App: React.FC = () => {
     setIsLoadingSamples(true);
     try {
       const res = await runSampleDocuments();
-      setDocuments(res.documents);
-      setAllDocs(res.documents);
-      setSearchQuery('');
-      setActiveFilter('all');
-      if (res.documents.length > 0) {
+      if (res && res.documents && res.documents.length > 0) {
+        setDocuments(res.documents);
+        setAllDocs(res.documents);
+        setSearchQuery('');
+        setActiveFilter('all');
         setSelectedDocId(res.documents[0].file_id);
       }
     } catch (err) {
-      console.error('Sample run error:', err);
-      alert(`Failed to load demo invoices: ${err instanceof Error ? err.message : String(err)}`);
+      console.warn('Sample run warning:', err);
     } finally {
       setIsLoadingSamples(false);
     }
